@@ -76,7 +76,7 @@ window.akapi = class AKAPIFetch {
 		const is_read_only_method = this.read_only_methods.includes(method); 
 
 		if ( ! this.allow_writes && ! is_read_only_method && 
-						! this.read_safe.find( (rs) => rs.text(cache_key) ) ) {
+						! this.read_safe.find( (rs) => rs.test(cache_key) ) ) {
 			if ( log_level ) {
 				console.error( `AK API Call ${counter}: Writes not allowed` );
 			}
