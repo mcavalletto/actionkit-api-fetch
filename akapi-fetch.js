@@ -52,11 +52,24 @@ window.akapi = class AKAPIFetch {
 		}
 		var request_path = ( path.startsWith('/') || path.match(/https?:/) ) ? path : ( this.api_base + path );
 
-		var data_string = ( ! data ) ? null :
-			( typeof(data) == 'object' && ! Object.keys(data).length ) ? null :
-			( typeof(data) == 'string' ) ? data :
-			( method == 'GET' ) ? new URLSearchParams(data).toString() :
-			JSON.stringify(data);
+		const content_type = ( method == 'GET' || options.content == 'urlencoded' ) ? 'application/x-www-form-urlencoded' : options.content || 'application/json';
+
+		var data_string; 
+		if ( data ) {
+			if ( typeof(data) == 'string' ) {
+				data_string = data;
+			} else if ( typeof(data) != 'object' ) {
+				throw new Error(`API unepected data type: ${ typeof(data) }`);
+			} else if ( ! Object.keys(data).length ) {
+				data_string = null;
+			} else if ( content_type == 'application/x-www-form-urlencoded' ) {
+				data_string = new URLSearchParams(data).toString();
+			} else if ( content_type == 'application/json' ) {
+				data_string = JSON.stringify(data);
+			} else {
+				throw new Error(`API unexpected content-type: ${ content_type }`);
+			}
+		}
 
 		var cache_key = ( method + ' ' + path + ' ' + data_string );
 		if ( options.cache && cache_key in this.cached_requests ) {
@@ -96,13 +109,13 @@ window.akapi = class AKAPIFetch {
 				request_path = request_path + ( (request_path.indexOf('?') == -1) ? '?' : '&' ) + data_string;
 			} else {
 				request_params.body = data_string;
-				request_params.headers['Content-Type'] = 'application/json';
+				request_params.headers['Content-Type'] = content_type;
 			}
 		}
 
 		try {
 			const response = await fetch( request_path, request_params );
-			if (!response.ok) {
+			if ( ! response.ok ) {
 				const content = await response.text();
 				throw new Error(`Response status: ${response.status} (${content})`);
 			}
