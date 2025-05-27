@@ -2,7 +2,10 @@
 *
 * akapi-fetch.js: Call the ActionKit API from an admin dashboard.
 *
+* For more information visit https://greenthumbsoftware.com/akapi-fetch/
+*
 * Copyright 2024-2025 Simon Cavalletto / Green Thumb Software
+* Released for free use under the MIT License.
 *
 **********************************************************************/
 

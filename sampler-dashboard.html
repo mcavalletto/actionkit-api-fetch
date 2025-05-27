@@ -1,0 +1,222 @@
+<!-- *****************************************************************
+*
+* sampler-dashboard.html for akapi-fetch.js: Examples of AK API calls
+*
+* You can copy and paste this code into an ActionKit dashboard report to
+* see some examples of akapi-fetch.js in action.
+* 
+* For more information visit https://greenthumbsoftware.com/akapi-fetch/
+*
+* Copyright 2024-2025 Simon Cavalletto / Green Thumb Software
+* Released for free use under the MIT License.
+*
+****************************************************************** -->
+
+<script>
+	$.getScript(
+		'https://greenthumbsoftware.com/akjs/akapi-fetch.js'
+	);
+</script>
+
+<script>
+	$('.example').each( function () {
+		const example = $( this );
+		example.prepend(' <span class="show-code">Code</span> ');
+		const code = example.next('script').text().replace(/^\s*\n/, '');
+		const div = $('<div class="code">').text( code );
+		div.html( div.html().replace(/akapi.*;?/g, "<b>$&</b>") );
+		div.insertAfter( example )
+	} );
+	$('.show-code').on('click', function () {
+		$( this ).toggleClass('showing')
+			.closest( '.example' ).next().toggle();
+	} );
+</script>
+
+<style>
+	.example { border: 1px solid #AAA; margin: 1em 0; padding: 0.5em }
+	.code { display: none; border: 1px solid #9AB; margin: 1em 1em; padding: 0.5em; background: #f0f8ff; white-space: pre-wrap; font-family: monospace; tab-size: 4; }
+	.show-code { color: #357; cursor: pointer; background: #def; padding: 0.25em; float: right; }
+	.show-code::before { content: "► " }
+	.show-code.showing::before { content: "▼ " }
+	input[type="text"], input[type="number"], select { width: 8em; }
+	input[type="email"] { width: 18em; }
+</style>
+
+<div id="latest-email" class="example"> 
+	<b>Latest User's Email:</b> 
+	<span id="email-results">Click button to load...</span>
+	<button>Fetch Latest User</button>
+</div>
+
+<script>
+$('#latest-email button').on('click', async function () {
+	var latest_users = await akapi.get('user', { _limit: 1, order_by: '-id' } );
+	$('#email-results').text( latest_users.objects[0].email );
+} );
+</script>
+
+<div id="count-pages" class="example"> 
+	<b>Count of Pages:</b> 
+	<span id="page-count-results">Click button to load...</span>
+	<button>Count Pages</button>
+</div>
+
+<script>
+$('#count-pages button').on('click', async function () {
+	var count = await akapi.post('report/run/sql/', { "query": "select count(*) from core_page" } );
+	$('#page-count-results').text( count[0][0] );
+} );
+</script>
+
+<div id="list-pages" class="example"> 
+	<b>First Five Pages:</b> 
+	<button>Load Page Info</button>
+</div>
+
+<script>
+$('#list-pages button').on('click', async function () {
+	var page_list = await akapi.get('page', { order_by: 'id', _limit: 5 } );
+	$('#list-pages .results').remove('');
+	const results = $('<div class="results">').appendTo('#list-pages');
+	for ( const page of page_list.objects ) {
+		results.append( `<p data-page_id="${ page.id }"> &bull; ${ page.name } (${ page.type }) </p>` )
+	}
+} );
+$('#list-pages').on('mouseover', 'p', async function () {
+	var page_p = $( this );
+	if ( page_p.find('span').length ) { return }
+	const info = $('<span>').appendTo( page_p );
+	const output = ( text ) => info.append( ` ${ text } ` );
+	const first = await akapi.get( 'action', { page: page_p.data('page_id'), _limit: 1 } );
+	if ( first.objects.length == 0 ) {
+		return output( `No actions recorded.` );
+	}
+	output( `First action at ${ first.objects[0].created_at }.` );
+	const user = await akapi.get( first.objects[0].user );
+	output( `First action by ${ user.email }.` );
+} );
+</script>
+
+<div id="page-fields" class="example"> 
+	<b>List Custom Fields for Page:</b> 
+	<select id="act-page"> <option>everyhome</option> <option>hithere</option> </select>
+	<button>Fetch Fields</button>
+	<table></table>
+</div>
+
+<script>
+$('#page-fields button').on('click', async function () {
+	const page_name = $('#act-page').val();
+	const page_list = await akapi.get('page', { name: page_name } );
+	const fields = page_list.objects[0].fields;
+	var table = $( '#page-fields table' );
+	table.find('tr').remove();
+	for ( const field_name in fields ) {
+		const row = $(`<tr><th></td><td></td></tr>`).appendTo( table );
+		row.find('th').text( field_name );  
+		row.find('td').text( fields[ field_name ] );  
+	}
+} );
+</script>
+
+<div id="page-assign" class="example"> 
+	<b>Set Custom Field for Page:</b> 
+	<select id="pcf-page"> <option>everyhome</option> <option>hithere</option> </select>
+	<input type="text" id="pcf-name" placeholder="custom field">
+	<input type="text" id="pcf-value" placeholder="field value">
+	<button>Set Field</button>
+</div>
+
+<script>
+$('#page-assign button').on('click', async function () {
+	const page_name = $('#pcf-page').val();
+	const field_name = $('#pcf-name').val();
+	const field_value = $('#pcf-value').val();
+	const page_list = await akapi.get('page', { name: page_name } );
+	const page_info = page_list.objects[0];
+	const fields = {};
+	fields[ field_name ] = field_value;
+	const result = await akapi.patch( page_info.resource_uri, { fields: fields } );
+	$('#page-assign').append( `<p> Set ${ page_name } field ${ field_name } to ${ field_value } </p>` );
+} );
+</script>
+
+<div id="add-user" class="example"> 
+	<b>Add a User:</b> 
+	<input type="email" id="add-email" placeholder="address@example.com">
+	<button>Add</button>
+</div>
+
+<script>
+$('#add-user button').on('click', async function () {
+	const email = $('#add-email').val();
+	const existing = await akapi.get('user', { email: email } );
+	const output = ( text ) => $('#add-user').append( `<p> ${ text } </p>` );
+	if ( existing.objects.length ) {
+		return output( `There is already user with the address ${ email }.` );
+	} 
+	const new_user = await akapi.post('user', { email: email } );
+	const user_info = await akapi.get( new_user );
+	output( `Added ${ email } as new <a target="_blank" href="/admin/core/user/${ user_info.id }/">user ${ user_info.id }</a>.` );
+} );
+</script>
+
+<div id="submit-action" class="example"> 
+	<b>Submit Action:</b> 
+	<select id="act-page"> <option>everyhome</option> <option>hithere</option> </select>
+	<input type="email" id="act-email" placeholder="address@example.com">
+	<button>Submit</button>
+</div>
+
+<script>
+$('#submit-action button').on('click', async function () {
+	const email = $('#act-email').val();
+	const page = $('#act-page').val();
+	const result = await akapi.post('action', { page: page, email: email } );
+	$('#submit-action').append( `<p> New action: ${ result } </p>` );
+} );
+</script>
+
+<div id="user-action" class="example"> 
+	<b>Submit Action as User:</b> 
+	<select id="act-page"> <option>everyhome</option> <option>hithere</option> </select>
+	<input type="email" id="act-email" placeholder="address@example.com">
+	<button>Submit</button>
+</div>
+
+<script>
+$('#user-action button').on('click', async function () {
+	const email = $('#act-email').val();
+	const page = $('#act-page').val();
+	const result = await akapi.post('/act/', { page: page, email: email }, { content: 'urlencoded', receive: 'html' } );
+	$('#user-action').append( `<iframe style="width: 100%">` );
+	$('#user-action iframe').contents().find('html').html( result )
+} );
+</script>
+
+<div id="change-source" class="example"> 
+	<b>Change Action Source:</b> 
+		<input type="number" name="action_id" placeholder="Action ID">
+		<input type="text" name="source" placeholder="Source Code">
+	<button>Change</button>
+</div>
+
+<script>
+$('#change-source button').on('click', async function () {
+	const update_form = $(this).closest('div');
+	const action_id = update_form.find('[name="action_id"]').val();
+	const source = update_form.find('[name="source"]').val();
+	const output = ( text ) => update_form.append( `<p> ${ text } </p>` );
+	const action = await akapi.get('action/' + action_id);
+	if ( ! action ) {
+		return output( `Can't find an action with ID ${ action_id }.` );
+	}
+	const confirmed = window.confirm(`Change action ${ action_id } source from ${ action.source } to ${ source }?`);
+	if ( ! confirmed ) {
+		return output( `Decided against changing source of action ${ action_id } from ${ action.source } to ${ source }.` );
+	}
+	const results = await akapi.patch( action.resource_uri, { source: source } );
+	output( `Changed source of action ${ action_id } from ${ action.source } to ${ source }.` );
+} );
+</script>
